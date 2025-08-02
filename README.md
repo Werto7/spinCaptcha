@@ -41,5 +41,5 @@
 <h2>Requirements</h2>
 
 <ul>
-  <li><code>ImageMagick</code></li>
+  <li><code>imagemagick</code></li>
 </ul>
