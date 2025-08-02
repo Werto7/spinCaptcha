@@ -13,7 +13,7 @@ class CaptchaBox
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
-        $this->path = dirname(__DIR__);
+        $this->path = __DIR__;
     }
 
     public function showCaptchaInline()
@@ -473,4 +473,5 @@ class CaptchaBox
 
         return true;
     }
+
 }
