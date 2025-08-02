@@ -16,9 +16,8 @@
 <ol>
   <li>Place source images into the <code>spinCaptcha_pictures</code> folder.</li>
   <li>Then run the script from the terminal:</li>
+  <pre><code>php captcha-generator.php</code></pre>
 </ol>
-
-<pre><code>php captcha-generator.php</code></pre>
 
 <p><strong>Warning:</strong> Any images placed in <code>spinCaptcha_pictures</code> will be <em>deleted</em> after the script runs!</p>
 
