@@ -13,11 +13,14 @@ class CaptchaBox
         if (session_status() !== PHP_SESSION_ACTIVE) {
             session_start();
         }
-        $this->path = __DIR__;
+        $this->path = dirname(__DIR__);;
     }
 
     public function showCaptchaInline()
     {
+    	$_SESSION['captcha_start'] = time();
+        $_SESSION['captcha_timeout'] = 60; //Seconds
+
         $jsonPath = $this->path . '/spinCaptcha_pictures/answers.json';
         $entries = json_decode(file_get_contents($jsonPath), true);
 
@@ -332,14 +335,14 @@ class CaptchaBox
 
 
                     <div id="container1" class="container">
-                        <input type="radio" name="rotation" id="r0" checked>
-                        <input type="radio" name="rotation" id="r1">
-                        <input type="radio" name="rotation" id="r2">
-                        <input type="radio" name="rotation" id="r3">
-                        <input type="radio" name="rotation" id="r4">
-                        <input type="radio" name="rotation" id="r5">
-                        <input type="radio" name="rotation" id="r6">
-                        <input type="radio" name="rotation" id="r7">
+                        <input type="radio" name="rotation" id="r0" value="r0" checked>
+                        <input type="radio" name="rotation" id="r1" value="r1">
+                        <input type="radio" name="rotation" id="r2" value="r2">
+                        <input type="radio" name="rotation" id="r3" value="r3">
+                        <input type="radio" name="rotation" id="r4" value="r4">
+                        <input type="radio" name="rotation" id="r5" value="r5">
+                        <input type="radio" name="rotation" id="r6" value="r6">
+                        <input type="radio" name="rotation" id="r7" value="r7">
 
                         <div class="outer-circle">
                             <img src="data:image/jpeg;base64,{$img1_r}" class="outer" alt="Bild aussen">
@@ -364,15 +367,14 @@ class CaptchaBox
                     </div>
   
                     <div id="container2" class="container">
-                        <input type="radio" name="rotation2" id="r8" checked>
-                        <input type="radio" name="rotation2" id="r9">
-                        <input type="radio" name="rotation2" id="r10">
-                        <input type="radio" name="rotation2" id="r11">
-                        <input type="radio" name="rotation2" id="r12">
-                        <input type="radio" name="rotation2" id="r13">
-                        <input type="radio" name="rotation2" id="r14">
-                        <input type="radio" name="rotation2" id="r15">
-    	
+                        <input type="radio" name="rotation2" id="r8" value="r8" checked>
+                        <input type="radio" name="rotation2" id="r9" value="r9">
+                        <input type="radio" name="rotation2" id="r10" value="r10">
+                        <input type="radio" name="rotation2" id="r11" value="r11">
+                        <input type="radio" name="rotation2" id="r12" value="r12">
+                        <input type="radio" name="rotation2" id="r13" value="r13">
+                        <input type="radio" name="rotation2" id="r14" value="r14">
+                        <input type="radio" name="rotation2" id="r15" value="r15">
                         <div class="outer-circle">
                             <img src="data:image/jpeg;base64,{$img2_r}" class="outer" alt="Bild außen">
                             <img src="data:image/jpeg;base64,{$img2_o}" class="inner-image" alt="Bild innen">
@@ -395,15 +397,14 @@ class CaptchaBox
                     </div>
   
                     <div id="container3" class="container">
-                        <input type="radio" name="rotation3" id="r16" checked>
-                        <input type="radio" name="rotation3" id="r17">
-                        <input type="radio" name="rotation3" id="r18">
-                        <input type="radio" name="rotation3" id="r19">
-                        <input type="radio" name="rotation3" id="r20">
-                        <input type="radio" name="rotation3" id="r21">
-                        <input type="radio" name="rotation3" id="r22">
-                        <input type="radio" name="rotation3" id="r23">
-    	
+                        <input type="radio" name="rotation3" id="r16" value="r16" checked>
+                        <input type="radio" name="rotation3" id="r17" value="r17">
+                        <input type="radio" name="rotation3" id="r18" value="r18">
+                        <input type="radio" name="rotation3" id="r19" value="r19">
+                        <input type="radio" name="rotation3" id="r20" value="r20">
+                        <input type="radio" name="rotation3" id="r21" value="r21">
+                        <input type="radio" name="rotation3" id="r22" value="r22">
+                        <input type="radio" name="rotation3" id="r23" value="r23">
                         <div class="outer-circle">
                             <img src="data:image/jpeg;base64,{$img3_r}" class="outer" alt="Bild außen">
                             <img src="data:image/jpeg;base64,{$img3_o}" class="inner-image" alt="Bild innen">
@@ -429,10 +430,31 @@ class CaptchaBox
         HTML;
     }
 
-    public function isVerified(): bool {
+    public function isVerified() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             return false;
         }
+        
+        // Timeout prüfen
+        $start = $_SESSION['captcha_start'] ?? null;
+        $limit = $_SESSION['captcha_timeout'] ?? 60; // fallback 60s
+
+         if ($start === null) {
+             return false; // es gab kein Captcha vorher
+         }
+
+         if (time() - $start > $limit) {
+         	unset($_SESSION['captcha_start']);
+             unset($_SESSION['captcha_timeout']);
+             $prefix = "captcha_rotation_";
+
+             foreach ($_SESSION as $key => $value) {
+                 if (strpos($key, $prefix) === 0) {
+                     unset($_SESSION[$key]);
+                 }
+             }
+             return "timeout";
+         }
 
         $rotationMapping = [
             0 => [
@@ -467,10 +489,27 @@ class CaptchaBox
             $userInput = $_POST[$postKeys[$i]] ?? null;
 
             if ($expectedId === null || $userInput !== $expectedId) {
-                return false;
+            	unset($_SESSION['captcha_start']);
+                unset($_SESSION['captcha_timeout']);
+                $prefix = "captcha_rotation_";
+
+                foreach ($_SESSION as $key => $value) {
+                    if (strpos($key, $prefix) === 0) {
+                        unset($_SESSION[$key]);
+                    }
+                }
+            	return false;
             }
         }
+        unset($_SESSION['captcha_start']);
+        unset($_SESSION['captcha_timeout']);
+        $prefix = "captcha_rotation_";
 
+        foreach ($_SESSION as $key => $value) {
+            if (strpos($key, $prefix) === 0) {
+                unset($_SESSION[$key]);
+            }
+        }
         return true;
     }
 
