@@ -48,13 +48,15 @@ $result = $captcha-&gt;isVerified();
 
 <details>
   <summary>Show example</summary>
-  <pre><code class="language-php">&lt;?php
+
+  ```php
+<?php
 require_once 'spinCaptcha.php';
 $captcha = new CaptchaBox();
 
 $feedback = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $result = $captcha-&gt;isVerified();
+    $result = $captcha->isVerified();
     if ($result === true) {
         $feedback = '✔️ Captcha verified successfully.';
     } elseif ($result === 'timeout') {
@@ -63,31 +65,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $feedback = '❌ Captcha verification failed.';
     }
 }
-?&gt;
+?>
 
-&lt;!DOCTYPE html&gt;
-&lt;html lang="en"&gt;
-&lt;head&gt;
-  &lt;meta charset="utf-8" /&gt;
-  &lt;title&gt;SpinCaptcha Demo&lt;/title&gt;
-&lt;/head&gt;
-&lt;body&gt;
-  &lt;h1&gt;SpinCaptcha Demo&lt;/h1&gt;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SpinCaptcha Demo</title>
+</head>
+<body>
+  <h1>SpinCaptcha Demo</h1>
 
-  &lt;?php if (!empty($feedback)) : ?&gt;
-    &lt;p&gt;&lt;strong&gt;&lt;?= htmlspecialchars($feedback, ENT_QUOTES) ?&gt;&lt;/strong&gt;&lt;/p&gt;
-  &lt;?php endif; ?&gt;
+  <?php if (!empty($feedback)) : ?>
+    <p><strong><?= htmlspecialchars($feedback, ENT_QUOTES) ?></strong></p>
+  <?php endif; ?>
 
-  &lt;form method="post" action=""&gt;
-    &lt;div&gt;
-      &lt;?php $captcha-&gt;showCaptchaInline(); ?&gt;
-    &lt;/div&gt;
+  <form method="post" action="">
+    <div>
+      <?php $captcha->showCaptchaInline(); ?>
+    </div>
 
-    &lt;button type="submit"&gt;Submit&lt;/button&gt;
-  &lt;/form&gt;
-&lt;/body&gt;
-&lt;/html&gt;
-</code></pre>
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>
+```
 </details>
 
 <hr />
