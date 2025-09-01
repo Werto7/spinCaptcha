@@ -113,6 +113,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <h2>How to Generate Captcha Images</h2>
 
+<p>
+  The <code>spinCaptcha_pictures</code> folder does <strong>not</strong> need to be in the same directory as 
+  <code>spinCaptcha.php</code>.
+</p>
+
+<p>
+  You can set the path from which the images will be loaded, as long as you copy or move the 
+  <code>spinCaptcha_pictures</code> folder into the corresponding location.
+</p>
+
+<p>
+  Inside <code>spinCaptcha.php</code>, adjust the path in the constructor:
+</p>
+
+<pre><code class="language-php">$this-&gt;path = __DIR__;
+</code></pre>
+
+<p>
+  Replace <code>__DIR__</code> with the desired absolute or relative path to your 
+  <code>spinCaptcha_pictures</code> folder.
+</p>
+
 <ol>
   <li>Place source images into the <code>spinCaptcha_pictures</code> folder.</li>
   <li>Then run the script from the terminal:</li>
