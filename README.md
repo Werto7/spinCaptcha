@@ -1,6 +1,104 @@
 <h1>spinCaptcha</h1>
 
-<p><strong>Status:</strong> The captcha is currently <em>not working</em>. It used to work until a small change was made in the code, which was not expected to affect it. When I have time, I’ll look into where the problem is.</p>
+<h2>1) Include and Instantiate</h2>
+
+<pre><code class="language-php">&lt;?php
+require_once 'spinCaptcha.php';
+
+$captcha = new CaptchaBox();
+?&gt;
+</code></pre>
+
+<hr />
+
+<h2>2) Render the CAPTCHA Inside Your Form</h2>
+
+<p>Place the widget where you want it to appear inside your <code>&lt;form&gt;...&lt;/form&gt;</code>:</p>
+
+<pre><code class="language-php">&lt;form method="post" action=""&gt;
+  &lt;div&gt;
+    &lt;?php $captcha-&gt;showCaptchaInline(); ?&gt;
+  &lt;/div&gt;
+
+  &lt;button type="submit"&gt;Submit&lt;/button&gt;
+&lt;/form&gt;
+</code></pre>
+
+<hr />
+
+<h2>3) Verify the Submission</h2>
+
+<p>After the form is submitted (e.g., on the same page or your handler), call:</p>
+
+<pre><code class="language-php">&lt;?php
+$result = $captcha-&gt;isVerified();
+?&gt;
+</code></pre>
+
+<p><strong>Return values:</strong></p>
+<ul>
+  <li><code>true</code> — CAPTCHA solved correctly</li>
+  <li><code>false</code> — CAPTCHA failed</li>
+  <li><code>"timeout"</code> — User took too long; challenge expired</li>
+</ul>
+
+<hr />
+
+<h2>Minimal End-to-End Example</h2>
+
+<details>
+  <summary>Show example</summary>
+  <pre><code class="language-php">&lt;?php
+require_once 'spinCaptcha.php';
+$captcha = new CaptchaBox();
+
+$feedback = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $result = $captcha-&gt;isVerified();
+    if ($result === true) {
+        $feedback = '✔️ Captcha verified successfully.';
+    } elseif ($result === 'timeout') {
+        $feedback = '⏱️ Captcha timed out. Please try again.';
+    } else {
+        $feedback = '❌ Captcha verification failed.';
+    }
+}
+?&gt;
+
+&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8" /&gt;
+  &lt;title&gt;SpinCaptcha Demo&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;SpinCaptcha Demo&lt;/h1&gt;
+
+  &lt;?php if (!empty($feedback)) : ?&gt;
+    &lt;p&gt;&lt;strong&gt;&lt;?= htmlspecialchars($feedback, ENT_QUOTES) ?&gt;&lt;/strong&gt;&lt;/p&gt;
+  &lt;?php endif; ?&gt;
+
+  &lt;form method="post" action=""&gt;
+    &lt;div&gt;
+      &lt;?php $captcha-&gt;showCaptchaInline(); ?&gt;
+    &lt;/div&gt;
+
+    &lt;button type="submit"&gt;Submit&lt;/button&gt;
+  &lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+</details>
+
+<hr />
+
+<h2>Troubleshooting Tips</h2>
+<ul>
+  <li>Ensure <code>spinCaptcha.php</code> is readable and in your include path.</li>
+  <li>Call <code>showCaptchaInline()</code> inside the <code>&lt;form&gt;</code> so the necessary fields are submitted.</li>
+  <li>Always check <code>isVerified()</code> on POST to handle <code>true</code>, <code>false</code>, or <code>"timeout"</code> accordingly.</li>
+</ul>
+
 
 <h2>Captcha Generator</h2>
 
