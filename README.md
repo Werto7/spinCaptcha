@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <h2>Captcha Generator</h2>
 
-<p>The captcha generator <strong>does work</strong>. It generates round <code>.webp</code> images (300px by 300px), and stores them as Base64 strings inside text files.</p>
+<p>The captcha generator generates round <code>.webp</code> images (300px by 300px), and stores them as Base64 strings inside text files.</p>
 
 <ul>
   <li>The Base64 of the original image is saved in the <code>originals</code> folder.</li>
