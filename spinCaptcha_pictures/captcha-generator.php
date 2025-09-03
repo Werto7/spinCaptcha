@@ -114,11 +114,11 @@ foreach ($imageFiles as $filePath) {
 
     //Step 5: Save rotated (rotated)
     $rotatedWebp = "$rotatedDir/{$base}.webp";
-    exec("magick \"$rounded\" -background none -distort SRT $angle \"$rotatedWebp\"");
+    exec("magick \"$rounded\" -strip -background none -distort SRT $angle \"$rotatedWebp\"");
 
     //Step 6: Save unrotated (original)
     $originalWebp = "$originalsDir/{$base}.webp";
-    exec("magick \"$rounded\" -define webp:lossless=true \"$originalWebp\"");
+    exec("magick \"$rounded\" -strip -define webp:lossless=true \"$originalWebp\"");
 
     //Step 7: Save Base64
     file_put_contents("$rotatedDir/{$base}.txt", base64_encode(file_get_contents($rotatedWebp)));
