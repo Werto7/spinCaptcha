@@ -111,6 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <li>The Base64 of the randomly rotated image is saved in the <code>rotated</code> folder.</li>
 </ul>
 
+<p>The captcha image generator removes metadata (EXIF, ICC profiles, IPTC and comments).</p>
+
 <h2>How to Generate Captcha Images</h2>
 
 <p>
