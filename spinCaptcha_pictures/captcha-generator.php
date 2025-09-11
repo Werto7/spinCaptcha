@@ -21,66 +21,131 @@ if ($argc > 1 && $argv[1] === 'repair') {
     $answersPath = "$baseDir/answers.json";
     $answers = file_exists($answersPath) ? json_decode(file_get_contents($answersPath), true) : [];
     if (!is_array($answers)) $answers = [];
+    $changes = false;
 
-    //Auxiliary function
+    //Auxiliary functions
     function removeFileIfExists($path) {
+        global $changes;
         if (file_exists($path)) {
             unlink($path);
             echo "🗑 File deleted: $path\n";
+            $changes = true;
         }
     }
 
-    //Capture all existing text files
-    $originalTxts = array_map('basename', glob("$originalsDir/*.txt"));
-    $rotatedTxts  = array_map('basename', glob("$rotatedDir/*.txt"));
+    function recreateRotationsFromOriginalTxt($originalTxt, $rotatedDir, $rotations, $tempDir, $base) {
+        global $changes;
+        // Original Base64 → WebP
+        $originalData = base64_decode(file_get_contents($originalTxt));
+        $tmpOriginalWebp = "$tempDir/{$base}_orig.webp";
+        file_put_contents($tmpOriginalWebp, $originalData);
 
-    $answersNames = array_column($answers, 'name');
+        foreach ($rotations as $i => $angle) {
+            $index = $i + 1;
+            $rotatedTxt = "$rotatedDir/{$base}_{$index}.txt";
+            if (!file_exists($rotatedTxt)) {
+                echo "♻️  Recreating rotation {$index} at {$angle}° for $base\n";
+                $rotatedWebp = "$tempDir/{$base}_{$index}.webp";
+                exec("magick \"$tmpOriginalWebp\" -background none -distort SRT $angle \"$rotatedWebp\"");
+                file_put_contents($rotatedTxt, base64_encode(file_get_contents($rotatedWebp)));
+                unlink($rotatedWebp);
+                $changes = true;
+            }
+        }
 
-    //Step 1: Clean up answers.json
+        @unlink($tmpOriginalWebp);
+    }
+
+    //Captured files
+    $originalTxts = array_map('basename', glob("$originalsDir/*.txt") ?: []);
+    $rotatedTxts  = array_map('basename', glob("$rotatedDir/*.txt") ?: []);
+
+    $answersNames = $answers; //answers.json is an array of originals
     $newAnswers = [];
-    foreach ($answers as $entry) {
-        $name = $entry['name'];
 
-        $existsOriginal = in_array($name, $originalTxts);
-        $existsRotated  = in_array($name, $rotatedTxts);
+    foreach ($answersNames as $name) {
+        $originalFile = "$originalsDir/$name";
+        $base = pathinfo($name, PATHINFO_FILENAME);
 
-        if ($existsOriginal || $existsRotated) {
-            $newAnswers[] = $entry; //Keep
-        } else {
-            echo "❌ No valid file entry for $name → Remove from answers.json\n";
-            //If necessary, delete the file from other folders (if it is there)
-            removeFileIfExists("$originalsDir/$name");
-            removeFileIfExists("$rotatedDir/$name");
+        if (!file_exists($originalFile)) {
+            echo "❌ Original missing for $name → Removing entry + any rotations.\n";
+            foreach (glob("$rotatedDir/{$base}_*.txt") ?: [] as $rotFile) {
+                removeFileIfExists($rotFile);
+            }
+            continue;
         }
+
+        //Original exists → ensure that all 5 rotations are present
+        recreateRotationsFromOriginalTxt($originalFile, $rotatedDir, $rotations, $tempDir, $base);
+
+        $newAnswers[] = $name;
     }
 
-    //Step 2: Check originals/
+    //Remove orphaned originals (not in answers.json)
     foreach ($originalTxts as $file) {
-        if (!in_array($file, $rotatedTxts) || !in_array($file, $answersNames)) {
-            echo "❌ Inconsistency in $file → Remove from originals/ + rotated/ + answers.json\n";
+        if (!in_array($file, $answersNames)) {
             removeFileIfExists("$originalsDir/$file");
-            removeFileIfExists("$rotatedDir/$file");
-            $newAnswers = array_filter($newAnswers, fn($a) => $a['name'] !== $file);
+            $base = pathinfo($file, PATHINFO_FILENAME);
+            foreach (glob("$rotatedDir/{$base}_*.txt") ?: [] as $rotFile) {
+                removeFileIfExists($rotFile);
+            }
         }
     }
 
-    //Step 3: Check rotated/
+    //Remove orphaned rotations (without a matching original)
+    $orphanRotations = [];
+    $unexpectedFiles = [];
+
     foreach ($rotatedTxts as $file) {
-        if (!in_array($file, $originalTxts) || !in_array($file, $answersNames)) {
-            echo "❌ Inconsistency in $file → Remove from rotated/ + originals/ + answers.json\n";
+        if (preg_match('/^(.+)_\d+\.txt$/', $file, $matches)) {
+            $base = $matches[1] . ".txt";
+            if (!in_array($base, $newAnswers)) {
+                $orphanRotations[] = $file;
+            }
+        } else {
+            $unexpectedFiles[] = $file;
+        }
+    }
+
+    //Message + Deleting Orphans
+    if ($orphanRotations) {
+        foreach ($orphanRotations as $file) {
             removeFileIfExists("$rotatedDir/$file");
-            removeFileIfExists("$originalsDir/$file");
-            $newAnswers = array_filter($newAnswers, fn($a) => $a['name'] !== $file);
+        }
+    }
+
+    //Message + Delete Unexpected
+    if ($unexpectedFiles) {
+        foreach ($unexpectedFiles as $file) {
+            removeFileIfExists("$rotatedDir/$file");
         }
     }
 
     //Update answers.json
     file_put_contents($answersPath, json_encode(array_values($newAnswers), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    echo "✅ Repair completed.\n";
+    function rrmdir($dir) {
+        if (!is_dir($dir)) return;
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') continue;
+            $path = "$dir/$item";
+            if (is_dir($path)) {
+                rrmdir($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($dir);
+    }
+    rrmdir($tempDir);
+    if ($changes) {
+        echo "✅ Repair completed (inconsistencies fixed).\n";
+    } else {
+        echo "✨ Everything is fine – no repairs necessary.\n";
+    }
     exit;
 }
 
-//Prepare or read answers.json
+//Prepare or read answers.json (now simple array of filenames)
 $answersPath = "$baseDir/answers.json";
 if (file_exists($answersPath)) {
     $answers = json_decode(file_get_contents($answersPath), true);
@@ -108,58 +173,51 @@ foreach ($imageFiles as $filePath) {
     $rounded = "$tempDir/{$base}_round.png";
     exec("magick \"$resized\" \"$mask\" -alpha off -compose CopyOpacity -composite \"$rounded\"");
 
-    //Step 4: Random rotation
-    $angle = $rotations[array_rand($rotations)];
-    echo "↪️  Rotated by {$angle}°\n";
-
-    //Step 5: Save rotated (rotated)
-    $rotatedWebp = "$rotatedDir/{$base}.webp";
-    exec("magick \"$rounded\" -strip -background none -distort SRT $angle \"$rotatedWebp\"");
-
-    //Step 6: Save unrotated (original)
+    //Step 4: Save unrotated (original) as webp -> store in originals folder
     $originalWebp = "$originalsDir/{$base}.webp";
     exec("magick \"$rounded\" -strip -define webp:lossless=true \"$originalWebp\"");
-
-    //Step 7: Save Base64
-    file_put_contents("$rotatedDir/{$base}.txt", base64_encode(file_get_contents($rotatedWebp)));
+    // Save Base64 of original
     file_put_contents("$originalsDir/{$base}.txt", base64_encode(file_get_contents($originalWebp)));
-    unlink($rotatedWebp);
     unlink($originalWebp);
 
-    //Step 8: JSON entry – update existing or add new
+    //Step 5: For each rotation angle create a rotated variant and save as base_i.txt
+    foreach ($rotations as $i => $angle) {
+        $index = $i + 1; // _1 .. _5
+        echo "↪️  Creating rotation {$index} at {$angle}°\n";
+        $rotatedWebp = "$rotatedDir/{$base}_{$index}.webp";
+        exec("magick \"$rounded\" -strip -background none -distort SRT $angle \"$rotatedWebp\"");
+        file_put_contents("$rotatedDir/{$base}_{$index}.txt", base64_encode(file_get_contents($rotatedWebp)));
+        unlink($rotatedWebp);
+    }
+
+    //Step 6: Add original txt filename to answers.json (only name)
     $entryName = $base . '.txt';
-    $updated = false;
-
-    foreach ($answers as &$entry) {
-        if (isset($entry['name']) && $entry['name'] === $entryName) {
-            $entry['rotation'] = $angle;
-            $updated = true;
-            break;
-        }
+    if (!in_array($entryName, $answers, true)) {
+        $answers[] = $entryName;
     }
-    unset($entry); //Remove reference
 
-    if (!$updated) {
-        $answers[] = [
-            'name' => $entryName,
-            'rotation' => $angle
-        ];
-    }
+    //clean up temp files for this image
+    @unlink($resized);
+    @unlink($mask);
+    @unlink($rounded);
 }
 
-//Step 9: Write answers.json
+//Step 7: Write answers.json (array of strings)
+$answers = array_values(array_unique($answers));
 file_put_contents("$baseDir/answers.json", json_encode($answers, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 
-//Step 10: Delete source images
+//Step 8: Delete source images
 foreach ($imageFiles as $filePath) {
-    unlink($filePath);
+    @unlink($filePath);
 }
 
-//Step 11: Delete the temp folder
-array_map('unlink', glob("$tempDir/*"));
+//Step 9: Delete the temp folder
+foreach (glob("$tempDir/*") ?: [] as $f) {
+    @unlink($f);
+}
 @rmdir($tempDir);
 
 echo "✅ Done! Files saved in:\n";
-echo "📁 $originalsDir (Originals)\n";
-echo "📁 $rotatedDir (Rotated)\n";
-echo "📝 $baseDir/answers.json\n";
+echo "📁 $originalsDir (Originals as base.txt)\n";
+echo "📁 $rotatedDir (Rotated as base_1.txt ... base_5.txt)\n";
+echo "📝 $baseDir/answers.json (Array of names, only originals)\n";
